@@ -317,11 +317,10 @@ def build_telops(F):
     h = Telop(26.5, DURATION + 1, fade_out=0.01)
     h.add_horizontal("北新地 懐石料理", W / 2, 215, F.get("medium", 40), KIKYO_LIGHT, 26.7, 0.04, style="focus", tracking=0.3)
     h.add_horizontal("大嵓埜", W / 2, 340, F.get("bold", 120), WASHI, 26.9, 0.18, style="focus", tracking=0.35)
-    h.add_horizontal("十月「桔梗色コース」", W / 2, 1290, F.get("bold", 64), WASHI, 27.3, 0.04, style="rise", tracking=0.06)
-    h.add_line(W / 2 - 300, 1360, W / 2 + 300, 1360, KIKYO_LIGHT, 2, 27.8, 0.8)
-    h.add_horizontal("ご予約・ご相談", W / 2, 1430, F.get("medium", 40), WASHI, 28.0, 0.03, style="rise", tracking=0.2)
-    h.add_horizontal("06-6341-3535", W / 2, 1500, F.get("bold", 56), WASHI, 28.2, 0.03, style="rise", tracking=0.06)
-    h.add_horizontal("JR北新地駅より徒歩2分", W / 2, 1580, F.get("medium", 36), KIKYO_LIGHT, 28.5, 0.02, style="rise", tracking=0.1)
+    h.add_horizontal("十月「桔梗色コース」", W / 2, 1310, F.get("bold", 68), WASHI, 27.3, 0.04, style="rise", tracking=0.06)
+    h.add_line(W / 2 - 280, 1395, W / 2 + 280, 1395, KIKYO_LIGHT, 2, 27.8, 0.8)
+    h.add_horizontal("お祝い事や接待、記念日に", W / 2, 1475, F.get("medium", 42), WASHI, 28.0, 0.035, style="rise", tracking=0.16)
+    h.add_horizontal("JR北新地駅より徒歩2分", W / 2, 1555, F.get("medium", 36), KIKYO_LIGHT, 28.4, 0.025, style="rise", tracking=0.14)
     T.append(h)
     return T
 
@@ -415,6 +414,7 @@ def main():
     ap.add_argument("--src", required=True)
     ap.add_argument("--fonts", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--music", help="BGM（先頭から使用、終わり 2.5 秒でフェードアウト）")
     ap.add_argument("--preview", type=float, nargs="*", help="指定秒の静止画だけ書き出す")
     args = ap.parse_args()
 
@@ -439,10 +439,13 @@ def main():
     n = int(DURATION * FPS)
     cmd = ["ffmpeg", "-y", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-           "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
-           "-map", "0:v", "-map", "1:a", "-shortest",
+           *(["-i", args.music] if args.music else
+             ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]),
+           "-map", "0:v", "-map", "1:a", "-t", str(DURATION),
+           *(["-af", f"atrim=0:{DURATION},afade=t=in:st=0:d=0.3,afade=t=out:st={DURATION - 2.5}:d=2.5,"
+                     "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000", "-b:a", "192k"] if args.music else []),
            "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
-           "-profile:v", "high", "-level", "4.1", "-c:a", "aac", "-b:a", "128k",
+           "-profile:v", "high", "-level", "4.1", "-c:a", "aac",
            "-movflags", "+faststart", args.out]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for i in range(n):
